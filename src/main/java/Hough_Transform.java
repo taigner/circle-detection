@@ -11,7 +11,7 @@ import java.awt.image.BufferedImage;
 
 /**
  * Hough transform for detecting circles in an image
- * 
+ *
  * @author Tobias Aigner
  */
 public class Hough_Transform implements PlugInFilter {
@@ -24,17 +24,16 @@ public class Hough_Transform implements PlugInFilter {
 
     private ImageProcessor original;
 
-	private int[][][] accumulator;
+    private int[][][] accumulator;
 
-	private int radiusMin;
-	private int radiusMax;
+    private int radiusMin;
+    private int radiusMax;
     private int numberOfSearchResults;
 
     private int x_midpoint;
     private int y_midpoint;
     private int x_offset;
-
-	private int y_offset;
+    private int y_offset;
 
     private void houghTransform(Rectangle boundingBox) {
         prepareWith(boundingBox);
@@ -44,7 +43,7 @@ public class Hough_Transform implements PlugInFilter {
             for (int v = radiusMax; v < y_midpoint - radiusMax; v++)
                 if (edges.getPixel(u + x_offset, v + y_offset) != 0)
                     for (int p = 0; p < (radiusMax - radiusMin); p++)
-                        bresenhamCircle(u, v, p);
+                        bresenhamCircleInAccumulator(u, v, p);
     }
 
     private void prepareWith(Rectangle boundingBox) {
@@ -85,73 +84,72 @@ public class Hough_Transform implements PlugInFilter {
     }
 
     private void findAndDrawCircles(int maximumNumberOfCircles) {
-		int lastMax;
+        int lastMax;
 
         int[][] results = new int[maximumNumberOfCircles][3];
         int[] circle = new int[3];
 
-		// skip 1% from edges
-		final int resultArea = (int) (x_midpoint * 0.01);
+        // skip 1% from edges
+        final int resultArea = (int) (x_midpoint * 0.01);
 
-		for (int maxCircles = 0; maxCircles < maximumNumberOfCircles; maxCircles++) {
-			lastMax = -1;
-			for (int u = resultArea; u < (x_midpoint - resultArea); u++) {
-				for (int v = resultArea; v < (y_midpoint - resultArea); v++) {
-					for (int p = 0; p < (radiusMax - radiusMin); p++) {
-						if (accumulator[u][v][p] > lastMax) {
-							circle[0] = u;
-							circle[1] = v;
-							circle[2] = p;
-							lastMax = accumulator[u][v][p];
-						}
-					}
-				}
-			}
+        for (int maxCircles = 0; maxCircles < maximumNumberOfCircles; maxCircles++) {
+            lastMax = -1;
+            for (int u = resultArea; u < (x_midpoint - resultArea); u++) {
+                for (int v = resultArea; v < (y_midpoint - resultArea); v++) {
+                    for (int p = 0; p < (radiusMax - radiusMin); p++) {
+                        if (accumulator[u][v][p] > lastMax) {
+                            circle[0] = u;
+                            circle[1] = v;
+                            circle[2] = p;
+                            lastMax = accumulator[u][v][p];
+                        }
+                    }
+                }
+            }
 
             System.arraycopy(circle, 0, results[maxCircles], 0, 3);
-			clearFoundAreaInAccumulator(results[maxCircles]);
-		}
+            clearFoundAreaInAccumulator(results[maxCircles]);
+        }
 
-		drawFoundCircles(results);
-	}
+        drawFoundCircles(results);
+    }
 
-	private void drawFoundCircles(int[][] results) {
-
+    private void drawFoundCircles(int[][] results) {
         for (int[] result : results) {
             System.out.println(String.format(FOUND_CIRCLE_MESSAGE, result[0] + x_offset, result[1] + y_offset, result[2] + radiusMin));
 
             drawCircle(new ImagePlus("results", original).getProcessor(), result[0] + x_offset, result[1] + y_offset, result[2] + radiusMin);
         }
-	}
+    }
 
-	private void clearFoundAreaInAccumulator(int[] results) {
-		int x = results[0];
-		int y = results[1];
-		int radius = results[2] + radiusMax + 3;
-		
-		for (int u = (x - radius); u < (x + radius); u++)
-			for (int v = (y - radius); v < (y + radius); v++)
-				for (int p = 0; p < (radiusMax - radiusMin); p++)
+    private void clearFoundAreaInAccumulator(int[] results) {
+        int x = results[0];
+        int y = results[1];
+        int radius = results[2] + radiusMax + 3;
+
+        for (int u = (x - radius); u < (x + radius); u++)
+            for (int v = (y - radius); v < (y + radius); v++)
+                for (int p = 0; p < (radiusMax - radiusMin); p++)
                     if (u > 0 && v > 0 && p > 0)
-					    accumulator[u][v][p] = 0;
-	}
+                        accumulator[u][v][p] = 0;
+    }
 
-	private void incrementInAccumulator(int x, int y, int p) {
-		if (x < 0 || y < 0 || p < 0)
-			return;
+    private void incrementInAccumulator(int x, int y, int p) {
+        if (x < 0 || y < 0 || p < 0)
+            return;
 
-		accumulator[x][y][p]++;
-	}
+        accumulator[x][y][p]++;
+    }
 
     /**
      * Bresenham algorithm for drawing circles inside accumulator.
      * For more details see http://en.wikipedia.org/wiki/Midpoint_circle_algorithm
      *
-     * @param x0 Midpoint for x
-     * @param y0 Midpoint for y
+     * @param x0     Midpoint for x
+     * @param y0     Midpoint for y
      * @param radius Radius of the circle
      */
-    void bresenhamCircle(int x0, int y0, int radius) {
+    void bresenhamCircleInAccumulator(int x0, int y0, int radius) {
         int p = radius;
         radius += radiusMin;
 
